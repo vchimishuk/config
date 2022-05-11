@@ -1,0 +1,92 @@
+NAME
+    Package config implements parser for simple but powerful language used for
+    configuration files.
+
+AUTHORS
+    Viacheslav Chimishuk <vchimishuk@yandex.ru>
+
+COPYING
+    This programm is released under the GNU General Public License version 3 or
+    later, which is distributed in the COPYING file. You should have received
+    a copy of the GNU General Public License along with this program.  If not,
+    see <http://www.gnu.org/licenses/>.
+
+DESCRIPTION
+    Configuration file description language syntax is pretty simple and contains
+    of sequence of properties and blocks.
+
+    Property is a traditional key=value pair. Property definition exaples:
+    string-property-name = "property-value"
+    int-property-name = 100
+
+    Block is a group of properties. Block definition exaples:
+    block-name {
+        prop-name = "value"
+    }
+    another-block-name {
+        prop-name = "value"
+        next-prop-name = "value"
+    }
+
+    Both, property and block can be optional, required or repeated. Client
+    passes supported configuration file structure (number of properties,
+    blocks, its type, etc) -- specification, to the parser. Parser checks
+    input file according to the provided specification, so client can be sure
+    that required properties are present, have expected type -- no futher
+    validation needed on client-side.
+
+    #-style comments are suppored too. Optional semicolon can be used at the
+    end of property definition.
+
+    Supported property types.
+     * bool -- true or false boolean constant.
+       bool-prop = true
+       bool-prop = false
+     * duration -- duration type. Same format as Go's time.ParseDuration() uses.
+       See more: https://pkg.go.dev/time#ParseDuration
+       duration-prop = 30s
+       duration-prop = 1h
+       duration-prop = 1h30m
+     * int -- integer type
+       int-prop = 100500
+     * string -- double-quoted string type
+       string-prop = "value"
+       string-prop = "foo\"bar"
+
+EXAMPLES
+	spec := &Spec{
+		Properties: []*PropertySpec{
+			&PropertySpec{
+				Type:    TypeString,
+				Name:    "name",
+				Repeat:  false,
+				Require: true,
+			},
+			&PropertySpec{
+				Type:    TypeInt,
+				Name:    "size",
+				Repeat:  false,
+				Require: true,
+			},
+			&PropertySpec{
+				Type:    TypeDuration,
+				Name:    "duration",
+				Repeat:  false,
+				Require: false,
+			},
+		},
+	}
+	input := `
+        name = "example"
+        size = 1024
+        duration = 1h
+        `
+
+	cfg, err := Parse(spec, input)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "configuration parsing failed: %s", err)
+	}
+
+	fmt.Printf("name = %s", cfg.StringOr("name", "default-name"))
+	fmt.Printf("size = %d", cfg.Int("size"))
+	fmt.Printf("duration = %d", cfg.Duration("duration"))

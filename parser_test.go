@@ -1,0 +1,422 @@
+package config
+
+import (
+	"reflect"
+	"testing"
+	"time"
+)
+
+func TestParse(t *testing.T) {
+	testCases := []struct {
+		Input string
+		Spec  *Spec
+		Exp   *Config
+	}{
+		{
+			"foo = 1; bar = 2;",
+			&Spec{
+				[]*PropertySpec{
+					&PropertySpec{TypeInt, "foo", false, true},
+					&PropertySpec{TypeInt, "bar", false, true},
+				},
+				nil,
+			},
+			&Config{
+				[]*Property{
+					&Property{TypeInt, "foo", 1},
+					&Property{TypeInt, "bar", 2},
+				},
+				nil,
+			},
+		},
+		{
+			"foo = 123\nbar = \"value\"",
+			&Spec{
+				[]*PropertySpec{
+					&PropertySpec{TypeInt, "foo", false, true},
+					&PropertySpec{TypeString, "bar", false, true},
+				},
+				nil,
+			},
+			&Config{
+				[]*Property{
+					&Property{TypeInt, "foo", 123},
+					&Property{TypeString, "bar", "value"},
+				},
+				nil,
+			},
+		},
+		{
+			"foo = 1; bar { baz = 2; qux = 3; }",
+			&Spec{
+				[]*PropertySpec{
+					&PropertySpec{TypeInt, "foo", false, true},
+				},
+				[]*BlockSpec{
+					&BlockSpec{
+						"bar",
+						false,
+						false,
+						[]*PropertySpec{
+							&PropertySpec{TypeInt, "baz", false, true},
+							&PropertySpec{TypeInt, "qux", false, true},
+						},
+						nil,
+					},
+				},
+			},
+			&Config{
+				[]*Property{
+					&Property{TypeInt, "foo", 1},
+				},
+				[]*Block{
+					&Block{
+						"bar",
+						[]*Property{
+							&Property{TypeInt, "baz", 2},
+							&Property{TypeInt, "qux", 3},
+						},
+						nil,
+					},
+				},
+			},
+		},
+		{
+			"foo { foo-prop = 1; bar { bar-prop = 2; baz { baz-prop = 3; } qux { qux-prop = 4; } } }",
+			&Spec{
+				nil,
+				[]*BlockSpec{
+					&BlockSpec{
+						"foo",
+						false,
+						false,
+						[]*PropertySpec{
+							&PropertySpec{TypeInt, "foo-prop", false, true},
+						},
+						[]*BlockSpec{
+							&BlockSpec{
+								"bar",
+								false,
+								false,
+								[]*PropertySpec{
+									&PropertySpec{TypeInt, "bar-prop", false, true},
+								},
+								[]*BlockSpec{
+									&BlockSpec{
+										"baz",
+										false,
+										false,
+										[]*PropertySpec{
+											&PropertySpec{TypeInt, "baz-prop", false, true},
+										},
+										nil,
+									},
+									&BlockSpec{
+										"qux",
+										false,
+										false,
+										[]*PropertySpec{
+											&PropertySpec{TypeInt, "qux-prop", false, true},
+										},
+										nil,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			&Config{
+				nil,
+				[]*Block{
+					&Block{
+						"foo",
+						[]*Property{
+							&Property{TypeInt, "foo-prop", 1},
+						},
+						[]*Block{
+							&Block{
+								"bar",
+								[]*Property{
+									&Property{TypeInt, "bar-prop", 2},
+								},
+								[]*Block{
+									&Block{
+										"baz",
+										[]*Property{
+											&Property{TypeInt, "baz-prop", 3},
+										},
+										nil,
+									},
+									&Block{
+										"qux",
+										[]*Property{
+											&Property{TypeInt, "qux-prop", 4},
+										},
+										nil,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		testParse(t, tc.Input, tc.Spec, tc.Exp)
+	}
+}
+
+func TestParseRepeatProperty(t *testing.T) {
+	// Repeated property is allowed by the spec.
+	testParse(t,
+		"foo = 1; foo = 2;",
+		&Spec{
+			[]*PropertySpec{
+				&PropertySpec{TypeInt, "foo", true, false},
+			},
+			nil,
+		},
+		&Config{
+			[]*Property{
+				&Property{TypeInt, "foo", 1},
+				&Property{TypeInt, "foo", 2},
+			},
+			nil,
+		},
+	)
+
+	// Repeated property is not allowed.
+	_, err := Parse(
+		&Spec{
+			[]*PropertySpec{
+				&PropertySpec{TypeInt, "foo", false, false},
+			},
+			nil,
+		},
+		"foo = 1; foo = 2;",
+	)
+	if err == nil || err.Error() != "1: property `foo` already defined" {
+		t.Fatal(err)
+	}
+}
+
+func TestParseRequireProperty(t *testing.T) {
+	// Property is not required.
+	cfg, err := Parse(
+		&Spec{
+			[]*PropertySpec{
+				&PropertySpec{TypeInt, "foo", false, false},
+			},
+			nil,
+		},
+		"",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(&Config{}, cfg) {
+		t.Fatal(cfg)
+	}
+
+	// Property is required.
+	cfg, err = Parse(
+		&Spec{
+			[]*PropertySpec{
+				&PropertySpec{TypeInt, "foo", false, true},
+			},
+			nil,
+		},
+		"",
+	)
+	if err == nil || err.Error() != "1: missing required property `foo`" {
+		t.Fatal(err)
+	}
+}
+
+func TestParseRepeatBlock(t *testing.T) {
+	// Repeated block is allowed by the spec.
+	testParse(t,
+		"foo {}; foo {};",
+		&Spec{
+			nil,
+			[]*BlockSpec{
+				&BlockSpec{"foo", true, true, nil, nil},
+			},
+		},
+		&Config{
+			nil,
+			[]*Block{
+				&Block{"foo", nil, nil},
+				&Block{"foo", nil, nil},
+			},
+		},
+	)
+
+	// Repeated block is not allowed.
+	_, err := Parse(
+		&Spec{
+			nil,
+			[]*BlockSpec{
+				&BlockSpec{"foo", false, true, nil, nil},
+			},
+		},
+		"foo {}; foo {};",
+	)
+	if err == nil || err.Error() != "1: block `foo` already defined" {
+		t.Fatal(err)
+	}
+}
+
+func TestParseRequireBlock(t *testing.T) {
+	// Block is not required.
+	cfg, err := Parse(
+		&Spec{
+			nil,
+			[]*BlockSpec{
+				&BlockSpec{"foo", false, false, nil, nil},
+			},
+		},
+		"",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(&Config{}, cfg) {
+		t.Fatal(cfg)
+	}
+
+	// Property is required.
+	cfg, err = Parse(
+		&Spec{
+			nil,
+			[]*BlockSpec{
+				&BlockSpec{"foo", false, true, nil, nil},
+			},
+		},
+		"",
+	)
+	if err == nil || err.Error() != "1: missing required block `foo`" {
+		t.Fatal(err)
+	}
+}
+
+func TestParseStarBlock(t *testing.T) {
+	cfg, err := Parse(
+		&Spec{
+			nil,
+			[]*BlockSpec{
+				&BlockSpec{
+					"*",
+					true,
+					false,
+					[]*PropertySpec{
+						&PropertySpec{TypeInt, "prop", false, false},
+					},
+					nil,
+				},
+			},
+		},
+		"foo { prop = 1 } bar { prop = 2 } baz { prop = 3 }",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	exp := &Config{
+		nil,
+		[]*Block{
+			&Block{
+				"foo",
+				[]*Property{
+					&Property{TypeInt, "prop", 1},
+				},
+				nil,
+			},
+			&Block{
+				"bar",
+				[]*Property{
+					&Property{TypeInt, "prop", 2},
+				},
+				nil,
+			},
+			&Block{
+				"baz",
+				[]*Property{
+					&Property{TypeInt, "prop", 3},
+				},
+				nil,
+			},
+		},
+	}
+	if !reflect.DeepEqual(exp, cfg) {
+		t.Fatal(cfg)
+	}
+}
+
+func TestParsePropertyType(t *testing.T) {
+	spec := &Spec{
+		[]*PropertySpec{
+			&PropertySpec{TypeString, "foo", false, false},
+		},
+		nil,
+	}
+	_, err := Parse(spec, "foo = 1")
+	if err == nil || err.Error() != "1: string value expected" {
+		t.Fatal(err)
+	}
+	_, err = Parse(spec, "foo = false")
+	if err == nil || err.Error() != "1: string value expected" {
+		t.Fatal(err)
+	}
+	_, err = Parse(spec, "foo = \"bar\"")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestParseBool(t *testing.T) {
+	spec := &Spec{
+		[]*PropertySpec{
+			&PropertySpec{TypeBool, "foo", false, false},
+		},
+		nil,
+	}
+	testParse(t, "foo = false", spec,
+		&Config{[]*Property{&Property{TypeBool, "foo", false}}, nil})
+	testParse(t, "foo = true", spec,
+		&Config{[]*Property{&Property{TypeBool, "foo", true}}, nil})
+	_, err := Parse(spec, "foo = bar")
+	if err == nil || err.Error() != "1: invalid boolean value" {
+		t.Fatal(err)
+	}
+}
+
+func TestParseDuration(t *testing.T) {
+	spec := &Spec{
+		[]*PropertySpec{
+			&PropertySpec{TypeDuration, "foo", false, false},
+		},
+		nil,
+	}
+	d, _ := time.ParseDuration("1s")
+	testParse(t, "foo = 1s", spec,
+		&Config{[]*Property{&Property{TypeDuration, "foo", d}}, nil})
+	d, _ = time.ParseDuration("1h30m")
+	testParse(t, "foo = 1h30m", spec,
+		&Config{[]*Property{&Property{TypeDuration, "foo", d}}, nil})
+	d, _ = time.ParseDuration("1.5m")
+	testParse(t, "foo = 1.5m", spec,
+		&Config{[]*Property{&Property{TypeDuration, "foo", d}}, nil})
+}
+
+func testParse(t *testing.T, s string, spec *Spec, exp *Config) {
+	act, err := Parse(spec, s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(exp, act) {
+		t.Fatalf("%+v != %+v", exp, act)
+	}
+}
