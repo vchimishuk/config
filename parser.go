@@ -19,6 +19,8 @@ const (
 	TypeInt
 	// String value -- sequence of characters enclosed with double quotes.
 	TypeString
+	// List of strings.
+	TypeStringList
 )
 
 // Specification descriptor for single property in configuration file.
@@ -141,15 +143,13 @@ func parseBlock(t *Tokenizer, name string, spec *BlockSpec) (*Block, error) {
 			if err != nil {
 				return nil, newError(t.Line(), err.Error())
 			}
-			var tp Type
+
 			var val any
 			switch s.Type {
 			case TypeBool:
 				if v.Name == NameIdent && v.Value == "true" {
-					tp = TypeBool
 					val = true
 				} else if v.Name == NameIdent && v.Value == "false" {
-					tp = TypeBool
 					val = false
 				} else {
 					return nil, newError(t.Line(),
@@ -165,7 +165,6 @@ func parseBlock(t *Tokenizer, name string, spec *BlockSpec) (*Block, error) {
 					return nil, newError(t.Line(),
 						"invalid duration value")
 				}
-				tp = TypeDuration
 				val = d
 			case TypeInt:
 				if v.Name != NameIdent {
@@ -177,25 +176,57 @@ func parseBlock(t *Tokenizer, name string, spec *BlockSpec) (*Block, error) {
 					return nil, newError(t.Line(),
 						"invalid integer value")
 				}
-				tp = TypeInt
 				val = i
 			case TypeString:
 				if v.Name != NameString {
 					return nil, newError(t.Line(),
 						"string value expected")
 				}
-				tp = TypeString
 				val = v.Value
+			case TypeStringList:
+				// TODO: Add empty list support.
+				if v.Name != NameString {
+					return nil, newError(t.Line(),
+						"strings list expected")
+				}
+				var lst []string
+
+				lst = append(lst, v.Value)
+				for {
+					if !t.HasNext() {
+						break
+					}
+					tk, err := t.Next()
+					if err != nil {
+						return nil, newError(t.Line(),
+							err.Error())
+					}
+					if tk.Name != NameComma {
+						t.Unread()
+						break
+					}
+					if !t.HasNext() {
+						return nil, newError(t.Line(),
+							"unexpected EOF")
+					}
+					tk, err = t.Next()
+					if err != nil {
+						return nil, newError(t.Line(),
+							err.Error())
+					}
+					if tk.Name != NameString {
+						return nil, newError(t.Line(),
+							"string value expected")
+					}
+					lst = append(lst, tk.Value)
+				}
+				val = lst
 			default:
 				panic("unsupported Type")
 			}
 
-			if tp != s.Type {
-				return nil, newError(t.Line(),
-					"invalid type for property `%s`", n.Value)
-			}
 			props = append(props, &Property{
-				Type:  tp,
+				Type:  s.Type,
 				Name:  n.Value,
 				Value: val,
 			})

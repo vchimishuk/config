@@ -13,6 +13,21 @@ func TestParse(t *testing.T) {
 		Exp   *Config
 	}{
 		{
+			"name = \"foo\", \"bar\", \"baz\"",
+			&Spec{
+				[]*PropertySpec{
+					&PropertySpec{TypeStringList, "name", false, false},
+				},
+				nil,
+			},
+			&Config{
+				[]*Property{
+					&Property{TypeStringList, "name", []string{"foo", "bar", "baz"}},
+				},
+				nil,
+			},
+		},
+		{
 			"foo = 1; bar = 2;",
 			&Spec{
 				[]*PropertySpec{

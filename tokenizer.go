@@ -13,6 +13,7 @@ type Name int
 const (
 	NameBlockEnd Name = iota
 	NameBlockStart
+	NameComma
 	NameEq
 	NameIdent
 	NameString
@@ -24,12 +25,17 @@ type Token struct {
 }
 
 type Tokenizer struct {
-	r    *strings.Reader
-	line int
+	r      *strings.Reader
+	line   int
+	last   *Token
+	unread bool
 }
 
 func NewTokenizer(s string) *Tokenizer {
-	return &Tokenizer{strings.NewReader(s), 1}
+	return &Tokenizer{
+		r:    strings.NewReader(s),
+		line: 1,
+	}
 }
 
 func (t *Tokenizer) Line() int {
@@ -39,36 +45,55 @@ func (t *Tokenizer) Line() int {
 func (t *Tokenizer) HasNext() bool {
 	t.eatWS()
 
-	return t.r.Len() > 0
+	return t.unread || t.r.Len() > 0
+}
+
+func (t *Tokenizer) Unread() {
+	t.unread = true
 }
 
 func (t *Tokenizer) Next() (*Token, error) {
+	if t.unread {
+		t.unread = false
+		return t.last, nil
+	}
+
 	t.eatWS()
 
-	r, _, err := t.r.ReadRune()
+	var tok *Token
+	var err error
+	var r rune
+	r, _, err = t.r.ReadRune()
 	if err != nil {
 		return nil, err
 	}
 
 	if r == '}' {
-		return &Token{NameBlockEnd, "}"}, nil
+		tok, err = &Token{NameBlockEnd, "}"}, nil
 	} else if r == '{' {
-		return &Token{NameBlockStart, "{"}, nil
+		tok, err = &Token{NameBlockStart, "{"}, nil
+	} else if r == ',' {
+		tok, err = &Token{NameComma, ","}, nil
 	} else if r == '=' {
-		return &Token{NameEq, "="}, nil
+		tok, err = &Token{NameEq, "="}, nil
 	} else if unicode.IsLetter(r) || unicode.IsDigit(r) {
 		t.r.UnreadRune()
-		id, err := t.readIdent()
-
-		return &Token{NameIdent, id}, err
+		id, e := t.readIdent()
+		tok, err = &Token{NameIdent, id}, e
 	} else if r == '"' {
 		t.r.UnreadRune()
-		s, err := t.readString()
+		s, e := t.readString()
 
-		return &Token{NameString, s}, err
+		tok, err = &Token{NameString, s}, e
 	} else {
-		return nil, fmt.Errorf("unexpected `%c`", r)
+		tok, err = nil, fmt.Errorf("unexpected `%c`", r)
 	}
+
+	if err == nil {
+		t.last = tok
+	}
+
+	return tok, err
 }
 
 func (t *Tokenizer) readIdent() (string, error) {
@@ -122,7 +147,11 @@ func (t *Tokenizer) readString() (string, error) {
 }
 
 func (t *Tokenizer) lexemeEnd(r rune) bool {
-	return unicode.IsSpace(r) || r == ';' || r == '\n' || r == '#'
+	return unicode.IsSpace(r) ||
+		r == ';' ||
+		r == ',' ||
+		r == '\n' ||
+		r == '#'
 }
 
 // Eat all whitespaces, lexeme delimeters and comments.
@@ -146,7 +175,9 @@ func (t *Tokenizer) eatWS() {
 				}
 
 			}
-		} else if !t.lexemeEnd(r) {
+		} else if unicode.IsSpace(r) || r == ';' {
+			// Just eat.
+		} else {
 			t.r.UnreadRune()
 			break
 		}

@@ -25,6 +25,14 @@ func TestTokenizer(t *testing.T) {
 		&Token{NameIdent, "foo"},
 		&Token{NameEq, "="},
 		&Token{NameIdent, "123xxx123"})
+	testTokensSerie(t, "foo = 1, bar, \"baz\"",
+		&Token{NameIdent, "foo"},
+		&Token{NameEq, "="},
+		&Token{NameIdent, "1"},
+		&Token{NameComma, ","},
+		&Token{NameIdent, "bar"},
+		&Token{NameComma, ","},
+		&Token{NameString, "baz"})
 	testTokensSerie(t, "block {foo = 1; bar = 2;}",
 		&Token{NameIdent, "block"},
 		&Token{NameBlockStart, "{"},
@@ -86,6 +94,17 @@ func testTokensSerie(t *testing.T, s string, toks ...*Token) {
 			t.Fatal()
 		}
 		act, err := tk.Next()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if *act != *tok {
+			t.Fatalf("%v != %v", act, tok)
+		}
+		tk.Unread()
+		if !tk.HasNext() {
+			t.Fatal()
+		}
+		act, err = tk.Next()
 		if err != nil {
 			t.Fatal(err)
 		}
