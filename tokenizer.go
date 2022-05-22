@@ -132,24 +132,22 @@ func (t *Tokenizer) eatWS() {
 		if err != nil {
 			break
 		}
-		if !t.lexemeEnd(r) {
-			t.r.UnreadRune()
-			if r == '\n' {
-				t.line++
-			}
-			break
-		}
-		if r == '#' {
+		if r == '\n' {
+			t.line++
+		} else if r == '#' {
 			for {
 				r, _, err := t.r.ReadRune()
 				if err != nil {
 					break
 				}
 				if r == '\n' {
-					t.line++
+					t.r.UnreadRune()
 					break
 				}
+
 			}
+		} else if !t.lexemeEnd(r) {
+			t.r.UnreadRune()
 			break
 		}
 	}

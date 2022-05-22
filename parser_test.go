@@ -411,6 +411,29 @@ func TestParseDuration(t *testing.T) {
 		&Config{[]*Property{&Property{TypeDuration, "foo", d}}, nil})
 }
 
+func TestParseComment(t *testing.T) {
+	spec := &Spec{
+		[]*PropertySpec{
+			&PropertySpec{TypeDuration, "heartbeat-ttl", true, true},
+		},
+		nil,
+	}
+	s := "heartbeat-ttl = 3s\n\n# comment\nheartbeat-ttl = 6s # more comment\n"
+	testParse(t, s, spec,
+		&Config{[]*Property{
+			&Property{TypeDuration, "heartbeat-ttl", time.Second * 3},
+			&Property{TypeDuration, "heartbeat-ttl", time.Second * 6},
+		},
+			nil})
+
+	s = "heartbeat-ttl = 3s\n\n# block {\n#}\n"
+	testParse(t, s, spec,
+		&Config{[]*Property{
+			&Property{TypeDuration, "heartbeat-ttl", time.Second * 3},
+		},
+			nil})
+}
+
 func testParse(t *testing.T, s string, spec *Spec, exp *Config) {
 	act, err := Parse(spec, s)
 	if err != nil {

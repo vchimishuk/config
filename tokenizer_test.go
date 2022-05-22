@@ -35,6 +35,10 @@ func TestTokenizer(t *testing.T) {
 		&Token{NameEq, "="},
 		&Token{NameIdent, "2"},
 		&Token{NameBlockEnd, "}"})
+	testTokensSerie(t, "heartbeat-ttl = 3s\n\n# block {\n#}\n",
+		&Token{NameIdent, "heartbeat-ttl"},
+		&Token{NameEq, "="},
+		&Token{NameIdent, "3s"})
 	testTokensSerie(t, ""+
 		"# Comment line.\n"+
 		"param-a = 1\n"+
