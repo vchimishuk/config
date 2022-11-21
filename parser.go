@@ -67,11 +67,13 @@ type BlockSpec struct {
 	Require    bool
 	Properties []*PropertySpec
 	Blocks     []*BlockSpec
+	Strict     bool
 }
 
 type Spec struct {
 	Properties []*PropertySpec
 	Blocks     []*BlockSpec
+	Strict     bool
 }
 
 const (
@@ -86,6 +88,7 @@ func Parse(spec *Spec, s string) (*Config, error) {
 		Repeat:     false,
 		Properties: spec.Properties,
 		Blocks:     spec.Blocks,
+		Strict:     spec.Strict,
 	}
 	b, err := parseBlock(t, rs.Name, rs)
 	if err != nil {
@@ -120,10 +123,21 @@ func parseBlock(t *Tokenizer, name string, spec *BlockSpec) (*Block, error) {
 
 		switch op.Name {
 		case NameEq:
+			if !t.HasNext() {
+				return nil, newError(t.Line(), "value expected")
+			}
+			v, err := t.Next()
+			if err != nil {
+				return nil, newError(t.Line(), err.Error())
+			}
 			s := findProperty(spec.Properties, n.Value)
 			if s == nil {
-				return nil, newError(t.Line(),
-					"unsupported property: %s", n.Value)
+				if spec.Strict {
+					return nil, newError(t.Line(),
+						"unsupported property: %s", n.Value)
+				} else {
+					continue
+				}
 			}
 			i := contains(len(props), func(i int) bool {
 				return props[i].Name == n.Value
@@ -135,13 +149,6 @@ func parseBlock(t *Tokenizer, name string, spec *BlockSpec) (*Block, error) {
 						n.Value)
 
 				}
-			}
-			if !t.HasNext() {
-				return nil, newError(t.Line(), "value expected")
-			}
-			v, err := t.Next()
-			if err != nil {
-				return nil, newError(t.Line(), err.Error())
 			}
 
 			var val any
