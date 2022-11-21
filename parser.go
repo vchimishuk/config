@@ -245,7 +245,7 @@ func parseBlock(t *Tokenizer, name string, spec *BlockSpec) (*Block, error) {
 			}
 			b, err := parseBlock(t, n.Value, s)
 			if err != nil {
-				return nil, newError(t.Line(), err.Error())
+				return nil, err
 			}
 			i := contains(len(blocks), func(i int) bool {
 				return blocks[i].Name == n.Value
