@@ -265,6 +265,52 @@ func TestParseRequireProperty(t *testing.T) {
 	}
 }
 
+func TestParseStarProperty(t *testing.T) {
+	testParse(t,
+		"",
+		&Spec{
+			[]*PropertySpec{
+				&PropertySpec{TypeInt, "foo",
+					false, false},
+				&PropertySpec{TypeInt, "foo.*",
+					false, false},
+				&PropertySpec{TypeInt, "foo.bar.*",
+					false, false},
+			},
+			nil,
+			true,
+		},
+		&Config{
+			nil,
+			nil,
+		},
+	)
+
+	testParse(t,
+		"foo = 1; foo.baz = true; foo.bar.baz = \"str\";",
+		&Spec{
+			[]*PropertySpec{
+				&PropertySpec{TypeInt, "foo",
+					false, false},
+				&PropertySpec{TypeBool, "foo.*",
+					false, false},
+				&PropertySpec{TypeString, "foo.bar*",
+					false, false},
+			},
+			nil,
+			true,
+		},
+		&Config{
+			[]*Property{
+				&Property{TypeInt, "foo", 1},
+				&Property{TypeBool, "foo.baz", true},
+				&Property{TypeString, "foo.bar.baz", "str"},
+			},
+			nil,
+		},
+	)
+}
+
 func TestParseRepeatBlock(t *testing.T) {
 	// Repeated block is allowed by the spec.
 	testParse(t,

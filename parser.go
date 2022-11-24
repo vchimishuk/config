@@ -1,7 +1,9 @@
 package config
 
 import (
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -78,7 +80,6 @@ type Spec struct {
 
 const (
 	rootBlock = ""
-	starBlock = "*"
 )
 
 func Parse(spec *Spec, s string) (*Config, error) {
@@ -313,30 +314,36 @@ func contains(len int, f func(int) bool) int {
 }
 
 func findProperty(specs []*PropertySpec, name string) *PropertySpec {
+	var ps *PropertySpec
+
 	for _, s := range specs {
-		if s.Name == name {
-			return s
+		if matchName(name, s.Name) {
+			if ps == nil || s.Name > ps.Name {
+				ps = s
+			}
 		}
 	}
 
-	return nil
+	return ps
 }
 
 func findBlock(specs []*BlockSpec, name string) *BlockSpec {
-	var star *BlockSpec
+	var bs *BlockSpec
 
 	for _, s := range specs {
-		if s.Name == name {
-			return s
-		}
-		if s.Name == starBlock {
-			star = s
+		if matchName(name, s.Name) {
+			if bs == nil || s.Name > bs.Name {
+				bs = s
+			}
 		}
 	}
 
-	if star != nil {
-		return star
-	}
+	return bs
+}
 
-	return nil
+func matchName(s string, pattern string) bool {
+	pattern = "^" + strings.ReplaceAll(pattern, "*", ".*") + "$"
+	p := regexp.MustCompile(pattern)
+
+	return p.MatchString(s)
 }
