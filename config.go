@@ -93,6 +93,24 @@ func (b *Block) StringOr(name string, defvalue string) string {
 	return p.Value.(string)
 }
 
+func (b *Block) StringList(name string) []string {
+	p := property(b.Properties, name)
+	if p == nil {
+		panic(fmt.Sprintf("`%s` property is not defined", name))
+	}
+
+	return p.Value.([]string)
+}
+
+func (b *Block) StringListOr(name string, defvalue []string) []string {
+	p := property(b.Properties, name)
+	if p == nil {
+		return defvalue
+	}
+
+	return p.Value.([]string)
+}
+
 // Block returns block by name or nil if no such block found.
 func (b *Block) Block(name string) *Block {
 	for _, b := range b.Blocks {
@@ -183,6 +201,24 @@ func (c *Config) StringOr(name string, defvalue string) string {
 	}
 
 	return p.Value.(string)
+}
+
+func (c *Config) StringList(name string) []string {
+	p := property(c.Properties, name)
+	if p == nil {
+		panic(fmt.Sprintf("`%s` property is not defined", name))
+	}
+
+	return p.Value.([]string)
+}
+
+func (c *Config) StringListOr(name string, defvalue []string) []string {
+	p := property(c.Properties, name)
+	if p == nil {
+		return defvalue
+	}
+
+	return p.Value.([]string)
 }
 
 // Block returns block by name or nil if no such block found.

@@ -1,12 +1,16 @@
 package config
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestConfigProperty(t *testing.T) {
 	cfg := &Config{
 		[]*Property{
 			&Property{TypeInt, "foo", 123},
 			&Property{TypeString, "bar", "value"},
+			&Property{TypeStringList, "baz", []string{"foo", "bar"}},
 		},
 		nil,
 	}
@@ -17,13 +21,26 @@ func TestConfigProperty(t *testing.T) {
 	if cfg.Int("foo") != 123 {
 		t.Fatal()
 	}
+	if cfg.IntOr("not-foo", 321) != 321 {
+		t.Fatal()
+	}
 	if !cfg.Has("bar") {
 		t.Fatal()
 	}
 	if cfg.String("bar") != "value" {
 		t.Fatal()
 	}
-	if cfg.StringOr("baz", "default") != "default" {
+	if cfg.StringOr("not-bar", "default") != "default" {
+		t.Fatal()
+	}
+	if !cfg.Has("baz") {
+		t.Fatal()
+	}
+	if !reflect.DeepEqual(cfg.StringList("baz"), []string{"foo", "bar"}) {
+		t.Fatal()
+	}
+	if !reflect.DeepEqual(cfg.StringListOr("not-baz", []string{"qux"}),
+		[]string{"qux"}) {
 		t.Fatal()
 	}
 }
