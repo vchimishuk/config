@@ -25,6 +25,9 @@ const (
 	TypeStringList
 )
 
+// Property value custom validator function.
+type Validator func(any) error
+
 // Specification descriptor for single property in configuration file.
 // Proper is a key=value parir expression which assigns value for an
 // identifier.
@@ -33,10 +36,11 @@ const (
 // property-name = "string value"
 // property-name = 100
 type PropertySpec struct {
-	Type    Type
-	Name    string
-	Repeat  bool
-	Require bool
+	Type      Type
+	Name      string
+	Repeat    bool
+	Require   bool
+	Validator Validator
 }
 
 // Specification descriptor for block of properties.
@@ -231,6 +235,14 @@ func parseBlock(t *Tokenizer, name string, spec *BlockSpec) (*Block, error) {
 				val = lst
 			default:
 				panic("unsupported Type")
+			}
+
+			if s.Validator != nil {
+				err := s.Validator(val)
+				if err != nil {
+					return nil, newError(t.Line(),
+						err.Error())
+				}
 			}
 
 			props = append(props, &Property{

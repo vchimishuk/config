@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 	"time"
@@ -16,7 +17,7 @@ func TestParse(t *testing.T) {
 			"name = \"foo\", \"bar\", \"baz\"",
 			&Spec{
 				[]*PropertySpec{
-					&PropertySpec{TypeStringList, "name", false, false},
+					&PropertySpec{TypeStringList, "name", false, false, nil},
 				},
 				nil,
 				true,
@@ -32,8 +33,8 @@ func TestParse(t *testing.T) {
 			"foo = 1; bar = 2;",
 			&Spec{
 				[]*PropertySpec{
-					&PropertySpec{TypeInt, "foo", false, true},
-					&PropertySpec{TypeInt, "bar", false, true},
+					&PropertySpec{TypeInt, "foo", false, true, nil},
+					&PropertySpec{TypeInt, "bar", false, true, nil},
 				},
 				nil,
 				true,
@@ -50,8 +51,8 @@ func TestParse(t *testing.T) {
 			"foo = 123\nbar = \"value\"",
 			&Spec{
 				[]*PropertySpec{
-					&PropertySpec{TypeInt, "foo", false, true},
-					&PropertySpec{TypeString, "bar", false, true},
+					&PropertySpec{TypeInt, "foo", false, true, nil},
+					&PropertySpec{TypeString, "bar", false, true, nil},
 				},
 				nil,
 				true,
@@ -68,7 +69,7 @@ func TestParse(t *testing.T) {
 			"foo = 1; bar { baz = 2; qux = 3; }",
 			&Spec{
 				[]*PropertySpec{
-					&PropertySpec{TypeInt, "foo", false, true},
+					&PropertySpec{TypeInt, "foo", false, true, nil},
 				},
 				[]*BlockSpec{
 					&BlockSpec{
@@ -76,8 +77,8 @@ func TestParse(t *testing.T) {
 						false,
 						false,
 						[]*PropertySpec{
-							&PropertySpec{TypeInt, "baz", false, true},
-							&PropertySpec{TypeInt, "qux", false, true},
+							&PropertySpec{TypeInt, "baz", false, true, nil},
+							&PropertySpec{TypeInt, "qux", false, true, nil},
 						},
 						nil,
 						true,
@@ -111,7 +112,7 @@ func TestParse(t *testing.T) {
 						false,
 						false,
 						[]*PropertySpec{
-							&PropertySpec{TypeInt, "foo-prop", false, true},
+							&PropertySpec{TypeInt, "foo-prop", false, true, nil},
 						},
 						[]*BlockSpec{
 							&BlockSpec{
@@ -119,7 +120,7 @@ func TestParse(t *testing.T) {
 								false,
 								false,
 								[]*PropertySpec{
-									&PropertySpec{TypeInt, "bar-prop", false, true},
+									&PropertySpec{TypeInt, "bar-prop", false, true, nil},
 								},
 								[]*BlockSpec{
 									&BlockSpec{
@@ -127,7 +128,7 @@ func TestParse(t *testing.T) {
 										false,
 										false,
 										[]*PropertySpec{
-											&PropertySpec{TypeInt, "baz-prop", false, true},
+											&PropertySpec{TypeInt, "baz-prop", false, true, nil},
 										},
 										nil,
 										true,
@@ -137,7 +138,7 @@ func TestParse(t *testing.T) {
 										false,
 										false,
 										[]*PropertySpec{
-											&PropertySpec{TypeInt, "qux-prop", false, true},
+											&PropertySpec{TypeInt, "qux-prop", false, true, nil},
 										},
 										nil,
 										true,
@@ -200,7 +201,7 @@ func TestParseRepeatProperty(t *testing.T) {
 		"foo = 1; foo = 2;",
 		&Spec{
 			[]*PropertySpec{
-				&PropertySpec{TypeInt, "foo", true, false},
+				&PropertySpec{TypeInt, "foo", true, false, nil},
 			},
 			nil,
 			true,
@@ -218,7 +219,7 @@ func TestParseRepeatProperty(t *testing.T) {
 	_, err := Parse(
 		&Spec{
 			[]*PropertySpec{
-				&PropertySpec{TypeInt, "foo", false, false},
+				&PropertySpec{TypeInt, "foo", false, false, nil},
 			},
 			nil,
 			true,
@@ -235,7 +236,7 @@ func TestParseRequireProperty(t *testing.T) {
 	cfg, err := Parse(
 		&Spec{
 			[]*PropertySpec{
-				&PropertySpec{TypeInt, "foo", false, false},
+				&PropertySpec{TypeInt, "foo", false, false, nil},
 			},
 			nil,
 			true,
@@ -253,7 +254,7 @@ func TestParseRequireProperty(t *testing.T) {
 	cfg, err = Parse(
 		&Spec{
 			[]*PropertySpec{
-				&PropertySpec{TypeInt, "foo", false, true},
+				&PropertySpec{TypeInt, "foo", false, true, nil},
 			},
 			nil,
 			true,
@@ -271,11 +272,11 @@ func TestParseStarProperty(t *testing.T) {
 		&Spec{
 			[]*PropertySpec{
 				&PropertySpec{TypeInt, "foo",
-					false, false},
+					false, false, nil},
 				&PropertySpec{TypeInt, "foo.*",
-					false, false},
+					false, false, nil},
 				&PropertySpec{TypeInt, "foo.bar.*",
-					false, false},
+					false, false, nil},
 			},
 			nil,
 			true,
@@ -291,11 +292,11 @@ func TestParseStarProperty(t *testing.T) {
 		&Spec{
 			[]*PropertySpec{
 				&PropertySpec{TypeInt, "foo",
-					false, false},
+					false, false, nil},
 				&PropertySpec{TypeBool, "foo.*",
-					false, false},
+					false, false, nil},
 				&PropertySpec{TypeString, "foo.bar*",
-					false, false},
+					false, false, nil},
 			},
 			nil,
 			true,
@@ -392,7 +393,7 @@ func TestParseStarBlock(t *testing.T) {
 					true,
 					false,
 					[]*PropertySpec{
-						&PropertySpec{TypeInt, "prop", false, false},
+						&PropertySpec{TypeInt, "prop", false, false, nil},
 					},
 					nil,
 					true,
@@ -439,7 +440,7 @@ func TestParseStarBlock(t *testing.T) {
 func TestParsePropertyType(t *testing.T) {
 	spec := &Spec{
 		[]*PropertySpec{
-			&PropertySpec{TypeString, "foo", false, false},
+			&PropertySpec{TypeString, "foo", false, false, nil},
 		},
 		nil,
 		true,
@@ -461,7 +462,7 @@ func TestParsePropertyType(t *testing.T) {
 func TestParseBool(t *testing.T) {
 	spec := &Spec{
 		[]*PropertySpec{
-			&PropertySpec{TypeBool, "foo", false, false},
+			&PropertySpec{TypeBool, "foo", false, false, nil},
 		},
 		nil,
 		true,
@@ -479,7 +480,7 @@ func TestParseBool(t *testing.T) {
 func TestParseDuration(t *testing.T) {
 	spec := &Spec{
 		[]*PropertySpec{
-			&PropertySpec{TypeDuration, "foo", false, false},
+			&PropertySpec{TypeDuration, "foo", false, false, nil},
 		},
 		nil,
 		true,
@@ -498,7 +499,7 @@ func TestParseDuration(t *testing.T) {
 func TestParseComment(t *testing.T) {
 	spec := &Spec{
 		[]*PropertySpec{
-			&PropertySpec{TypeDuration, "heartbeat-ttl", true, true},
+			&PropertySpec{TypeDuration, "heartbeat-ttl", true, true, nil},
 		},
 		nil,
 		true,
@@ -522,7 +523,7 @@ func TestParseComment(t *testing.T) {
 func TestParseStrict(t *testing.T) {
 	spec := &Spec{
 		[]*PropertySpec{
-			&PropertySpec{TypeInt, "foo", false, false},
+			&PropertySpec{TypeInt, "foo", false, false, nil},
 		},
 		nil,
 		true,
@@ -537,13 +538,44 @@ func TestParseStrict(t *testing.T) {
 func TestParseNonStrict(t *testing.T) {
 	spec := &Spec{
 		[]*PropertySpec{
-			&PropertySpec{TypeInt, "foo", false, false},
+			&PropertySpec{TypeInt, "foo", false, false, nil},
 		},
 		nil,
 		false,
 	}
 	_, err := Parse(spec, "bar = 1\nbaz = 2")
 	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestParseValidator(t *testing.T) {
+	validator := func(v any) error {
+		if v.(string) != "foo" {
+			return errors.New("unsupported value: " + v.(string))
+		}
+		return nil
+	}
+
+	spec := &Spec{
+		[]*PropertySpec{
+			&PropertySpec{
+				Type:      TypeString,
+				Name:      "prop",
+				Repeat:    false,
+				Require:   false,
+				Validator: validator,
+			},
+		},
+		nil,
+		false,
+	}
+	_, err := Parse(spec, "prop = \"foo\"")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = Parse(spec, "prop = \"bar\"")
+	if err == nil || err.Error() != "1: unsupported value: bar" {
 		t.Fatal(err)
 	}
 }
