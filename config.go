@@ -21,6 +21,24 @@ func (b *Block) Has(name string) bool {
 	return property(b.Properties, name) != nil || b.Block(name) != nil
 }
 
+func (b *Block) Any(name string) any {
+	p := property(b.Properties, name)
+	if p == nil {
+		panic(fmt.Sprintf("`%s` property is not defined", name))
+	}
+
+	return p.Value
+}
+
+func (b *Block) AnyOr(name string, defvalue any) any {
+	p := property(b.Properties, name)
+	if p == nil {
+		return defvalue
+	}
+
+	return p.Value
+}
+
 func (b *Block) Bool(name string) bool {
 	p := property(b.Properties, name)
 	if p == nil {
@@ -129,6 +147,24 @@ type Config struct {
 
 func (c *Config) Has(name string) bool {
 	return property(c.Properties, name) != nil || c.Block(name) != nil
+}
+
+func (c *Config) Any(name string) any {
+	p := property(c.Properties, name)
+	if p == nil {
+		panic(fmt.Sprintf("`%s` property is not defined", name))
+	}
+
+	return p.Value
+}
+
+func (c *Config) AnyOr(name string, defvalue any) any {
+	p := property(c.Properties, name)
+	if p == nil {
+		return defvalue
+	}
+
+	return p.Value
 }
 
 func (c *Config) Bool(name string) bool {

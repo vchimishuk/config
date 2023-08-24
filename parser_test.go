@@ -549,33 +549,52 @@ func TestParseNonStrict(t *testing.T) {
 	}
 }
 
-func TestParseValidator(t *testing.T) {
-	validator := func(v any) error {
-		if v.(string) != "foo" {
-			return errors.New("unsupported value: " + v.(string))
+func TestParseParser(t *testing.T) {
+	parser := func(v any) (any, error) {
+		s := v.(string)
+
+		switch s {
+		case "true":
+			return true, nil
+		case "false":
+			return false, nil
+		default:
+			return false, errors.New("unsupported value")
 		}
-		return nil
 	}
 
 	spec := &Spec{
 		[]*PropertySpec{
 			&PropertySpec{
-				Type:      TypeString,
-				Name:      "prop",
-				Repeat:    false,
-				Require:   false,
-				Validator: validator,
+				Type:    TypeString,
+				Name:    "prop",
+				Repeat:  false,
+				Require: false,
+				Parser:  parser,
 			},
 		},
 		nil,
 		false,
 	}
-	_, err := Parse(spec, "prop = \"foo\"")
+
+	c, err := Parse(spec, "prop = \"true\"")
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = Parse(spec, "prop = \"bar\"")
-	if err == nil || err.Error() != "1: unsupported value: bar" {
+	if c.Any("prop") != true {
+		t.Fatal()
+	}
+
+	c, err = Parse(spec, "prop = \"false\"")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Any("prop") != false {
+		t.Fatal()
+	}
+
+	_, err = Parse(spec, "prop = \"invalid\"")
+	if err == nil || err.Error() != "1: unsupported value" {
 		t.Fatal(err)
 	}
 }
