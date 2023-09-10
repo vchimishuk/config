@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -86,6 +87,15 @@ type Spec struct {
 const (
 	rootBlock = ""
 )
+
+func ParseFile(spec *Spec, file string) (*Config, error) {
+	d, err := os.ReadFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	return Parse(spec, string(d))
+}
 
 func Parse(spec *Spec, s string) (*Config, error) {
 	t := NewTokenizer(s)
