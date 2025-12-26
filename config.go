@@ -39,6 +39,10 @@ func (b *Block) AnyOr(name string, defvalue any) any {
 	return p.Value
 }
 
+func (b *Block) Anys(name string) []any {
+	return values[any](properties(b.Properties, name))
+}
+
 func (b *Block) Bool(name string) bool {
 	p := property(b.Properties, name)
 	if p == nil {
@@ -55,6 +59,10 @@ func (b *Block) BoolOr(name string, defvalue bool) bool {
 	}
 
 	return p.Value.(bool)
+}
+
+func (b *Block) Bools(name string) []bool {
+	return values[bool](properties(b.Properties, name))
 }
 
 func (b *Block) Duration(name string) time.Duration {
@@ -75,6 +83,10 @@ func (b *Block) DurationOr(name string, defvalue time.Duration) time.Duration {
 	return p.Value.(time.Duration)
 }
 
+func (b *Block) Durations(name string) []time.Duration {
+	return values[time.Duration](properties(b.Properties, name))
+}
+
 func (b *Block) Int(name string) int {
 	p := property(b.Properties, name)
 	if p == nil {
@@ -91,6 +103,10 @@ func (b *Block) IntOr(name string, defvalue int) int {
 	}
 
 	return p.Value.(int)
+}
+
+func (b *Block) Ints(name string) []int {
+	return values[int](properties(b.Properties, name))
 }
 
 func (b *Block) String(name string) string {
@@ -111,6 +127,10 @@ func (b *Block) StringOr(name string, defvalue string) string {
 	return p.Value.(string)
 }
 
+func (b *Block) Strings(name string) []string {
+	return values[string](properties(b.Properties, name))
+}
+
 func (b *Block) StringList(name string) []string {
 	p := property(b.Properties, name)
 	if p == nil {
@@ -127,6 +147,10 @@ func (b *Block) StringListOr(name string, defvalue []string) []string {
 	}
 
 	return p.Value.([]string)
+}
+
+func (b *Block) StringLists(name string) [][]string {
+	return values[[]string](properties(b.Properties, name))
 }
 
 // Block returns block by name or nil if no such block found.
@@ -167,6 +191,10 @@ func (c *Config) AnyOr(name string, defvalue any) any {
 	return p.Value
 }
 
+func (c *Config) Anys(name string) []any {
+	return values[any](properties(c.Properties, name))
+}
+
 func (c *Config) Bool(name string) bool {
 	p := property(c.Properties, name)
 	if p == nil {
@@ -183,6 +211,10 @@ func (c *Config) BoolOr(name string, defvalue bool) bool {
 	}
 
 	return p.Value.(bool)
+}
+
+func (c *Config) Bools(name string) []bool {
+	return values[bool](properties(c.Properties, name))
 }
 
 func (c *Config) Duration(name string) time.Duration {
@@ -203,6 +235,10 @@ func (c *Config) DurationOr(name string, defvalue time.Duration) time.Duration {
 	return p.Value.(time.Duration)
 }
 
+func (c *Config) Durations(name string) []time.Duration {
+	return values[time.Duration](properties(c.Properties, name))
+}
+
 func (c *Config) Int(name string) int {
 	p := property(c.Properties, name)
 	if p == nil {
@@ -219,6 +255,10 @@ func (c *Config) IntOr(name string, defvalue int) int {
 	}
 
 	return p.Value.(int)
+}
+
+func (c *Config) Ints(name string) []int {
+	return values[int](properties(c.Properties, name))
 }
 
 func (c *Config) String(name string) string {
@@ -239,6 +279,10 @@ func (c *Config) StringOr(name string, defvalue string) string {
 	return p.Value.(string)
 }
 
+func (c *Config) Strings(name string) []string {
+	return values[string](properties(c.Properties, name))
+}
+
 func (c *Config) StringList(name string) []string {
 	p := property(c.Properties, name)
 	if p == nil {
@@ -257,6 +301,10 @@ func (c *Config) StringListOr(name string, defvalue []string) []string {
 	return p.Value.([]string)
 }
 
+func (c *Config) StringLists(name string) [][]string {
+	return values[[]string](properties(c.Properties, name))
+}
+
 // Block returns block by name or nil if no such block found.
 func (c *Config) Block(name string) *Block {
 	for _, b := range c.Blocks {
@@ -268,12 +316,32 @@ func (c *Config) Block(name string) *Block {
 	return nil
 }
 
+func values[T any](props []*Property) []T {
+	var vs []T
+	for _, p := range props {
+		vs = append(vs, p.Value.(T))
+	}
+
+	return vs
+}
+
 func property(props []*Property, name string) *Property {
+	ps := properties(props, name)
+	if len(ps) == 0 {
+		return nil
+	}
+
+	return ps[0]
+}
+
+func properties(props []*Property, name string) []*Property {
+	var ps []*Property
+
 	for _, p := range props {
 		if p.Name == name {
-			return p
+			ps = append(ps, p)
 		}
 	}
 
-	return nil
+	return ps
 }

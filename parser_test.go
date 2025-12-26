@@ -459,18 +459,41 @@ func TestParsePropertyType(t *testing.T) {
 	}
 }
 
-func TestParseBool(t *testing.T) {
+func TestParseString(t *testing.T) {
 	spec := &Spec{
 		[]*PropertySpec{
-			&PropertySpec{TypeBool, "foo", false, false, nil},
+			&PropertySpec{TypeString, "foo", false, false, nil},
+			&PropertySpec{TypeString, "bar", true, false, nil},
 		},
 		nil,
 		true,
 	}
-	testParse(t, "foo = false", spec,
-		&Config{[]*Property{&Property{TypeBool, "foo", false}}, nil})
-	testParse(t, "foo = true", spec,
-		&Config{[]*Property{&Property{TypeBool, "foo", true}}, nil})
+
+	cfg := testParse(t, `bar = "one"; foo = "two"; bar = "three"`, spec,
+		&Config{[]*Property{
+			&Property{TypeString, "bar", "one"},
+			&Property{TypeString, "foo", "two"},
+			&Property{TypeString, "bar", "three"},
+		}, nil})
+	assert(t, "two", cfg.String("foo"))
+	assert(t, []string{"one", "three"}, cfg.Strings("bar"))
+}
+
+func TestParseBool(t *testing.T) {
+	spec := &Spec{
+		[]*PropertySpec{
+			&PropertySpec{TypeBool, "foo", false, false, nil},
+			&PropertySpec{TypeBool, "bar", true, false, nil},
+		},
+		nil,
+		true,
+	}
+	testParse(t, "bar = true; foo = true; bar = false", spec,
+		&Config{[]*Property{
+			&Property{TypeBool, "bar", true},
+			&Property{TypeBool, "foo", true},
+			&Property{TypeBool, "bar", false},
+		}, nil})
 	_, err := Parse(spec, "foo = bar")
 	if err == nil || err.Error() != "1: invalid boolean value" {
 		t.Fatal(err)
@@ -599,11 +622,17 @@ func TestParseParser(t *testing.T) {
 	}
 }
 
-func testParse(t *testing.T, s string, spec *Spec, exp *Config) {
+func testParse(t *testing.T, s string, spec *Spec, exp *Config) *Config {
 	act, err := Parse(spec, s)
 	if err != nil {
 		t.Fatal(err)
 	}
+	assert(t, exp, act)
+
+	return act
+}
+
+func assert(t *testing.T, exp any, act any) {
 	if !reflect.DeepEqual(exp, act) {
 		t.Fatalf("%+v != %+v", exp, act)
 	}
